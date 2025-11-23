@@ -30,10 +30,10 @@ export interface MemeEvent {
     poolBReserve?: number;
     poolFeeRate?: number;
     isMayhemMode?: boolean;
-    virtualTokenReserves?: string;
-    virtualSolReserves?: string;
-    realTokenReserves?: string;
-    realSolReserves?: string;
-    tokenTotalSupply?: string;
+    virtualTokenReserves?: number;
+    virtualSolReserves?: number;
+    realTokenReserves?: number;
+    realSolReserves?: number;
+    tokenTotalSupply?: number;
     tokenProgram?: string;
 }

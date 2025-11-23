@@ -152,10 +152,10 @@ export class PumpfunEventParser {
       creatorFee: evt.creatorFee,
       isMayhemMode,
       // Bonding curve reserves after trade
-      virtualSolReserves: evt.virtualSolReserves?.toString(),
-      virtualTokenReserves: evt.virtualTokenReserves?.toString(),
-      realSolReserves: evt.realSolReserves?.toString(),
-      realTokenReserves: evt.realTokenReserves?.toString(),
+      virtualSolReserves: evt.virtualSolReserves ? Number(evt.virtualSolReserves) : undefined,
+      virtualTokenReserves: evt.virtualTokenReserves ? Number(evt.virtualTokenReserves) : undefined,
+      realSolReserves: evt.realSolReserves ? Number(evt.realSolReserves) : undefined,
+      realTokenReserves: evt.realTokenReserves ? Number(evt.realTokenReserves) : undefined,
     } as MemeEvent;
   }
 
@@ -201,10 +201,10 @@ export class PumpfunEventParser {
       bondingCurve: evt.bondingCurve,
       creator: evt.creator,
       // Bonding curve data
-      virtualTokenReserves: evt.virtualTokenReserves?.toString(),
-      virtualSolReserves: evt.virtualSolReserves?.toString(),
-      realTokenReserves: evt.realTokenReserves?.toString(),
-      tokenTotalSupply: evt.tokenTotalSupply?.toString(),
+      virtualTokenReserves: evt.virtualTokenReserves ? Number(evt.virtualTokenReserves) : undefined,
+      virtualSolReserves: evt.virtualSolReserves ? Number(evt.virtualSolReserves) : undefined,
+      realTokenReserves: evt.realTokenReserves ? Number(evt.realTokenReserves) : undefined,
+      tokenTotalSupply: evt.tokenTotalSupply ? Number(evt.tokenTotalSupply) : undefined,
       tokenProgram: evt.tokenProgram,
       isMayhemMode: evt.isMayhemMode,
     } as MemeEvent;
