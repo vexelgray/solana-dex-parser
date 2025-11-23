@@ -1,0 +1,35 @@
+export declare const SPL_TOKEN_INSTRUCTION_TYPES: {
+    readonly InitializeMint: 0;
+    readonly InitializeAccount: 1;
+    readonly InitializeMultisig: 2;
+    readonly Transfer: 3;
+    readonly Approve: 4;
+    readonly Revoke: 5;
+    readonly SetAuthority: 6;
+    readonly MintTo: 7;
+    readonly Burn: 8;
+    readonly CloseAccount: 9;
+    readonly FreezeAccount: 10;
+    readonly ThawAccount: 11;
+    readonly TransferChecked: 12;
+    readonly ApproveChecked: 13;
+    readonly MintToChecked: 14;
+    readonly BurnChecked: 15;
+};
+export declare const SYSTEM_INSTRUCTION_TYPES: {
+    readonly CreateAccount: 0;
+    readonly Assign: 1;
+    readonly Transfer: 2;
+    readonly CreateAccountWithSeed: 3;
+    readonly AdvanceNonceAccount: 4;
+    readonly WithdrawNonceAccount: 5;
+    readonly InitializeNonceAccount: 6;
+    readonly AuthorizeNonceAccount: 7;
+    readonly Allocate: 8;
+    readonly AllocateWithSeed: 9;
+    readonly AssignWithSeed: 10;
+    readonly TransferWithSeed: 11;
+    readonly UpgradeNonceAccount: 12;
+    readonly CreateAccountWithSeedChecked: 13;
+    readonly CreateIdempotent: 14;
+};

@@ -1,0 +1,10 @@
+import { TransactionAdapter } from './transaction-adapter';
+import { TransferData } from './types';
+export declare const isTransferCheck: (instruction: any) => boolean;
+export declare const isTransfer: (instruction: any) => boolean;
+export declare const isNativeTransfer: (instruction: any) => boolean;
+export declare const processTransfer: (instruction: any, idx: string, adapter: TransactionAdapter) => TransferData | null;
+export declare const processNatvieTransfer: (instruction: any, idx: string, adapter: TransactionAdapter) => TransferData | null;
+export declare const processTransferCheck: (instruction: any, idx: string, adapter: TransactionAdapter) => TransferData | null;
+export declare const isExtraAction: (instruction: any, type: string) => boolean;
+export declare const processExtraAction: (instruction: any, idx: string, adapter: TransactionAdapter, type: string) => TransferData | null;
