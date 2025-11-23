@@ -179,9 +179,14 @@ export class PumpfunEventParser {
       evt.realTokenReserves = reader.readU64()
       evt.tokenTotalSupply = reader.readU64()
     }
-
-    // Check if this is a mayhem mode create
-    const isMayhemMode = this.adapter.accountKeys.includes(MAYHEM_FEE_RECIPIENT);
+    // Read token_program and is_mayhem_mode from event data (IDL spec)
+    if (reader.remaining() >= 33) {
+      evt.tokenProgram = reader.readPubkey()
+      evt.isMayhemMode = reader.readU8() === 1
+    } else {
+      // Fallback to account key detection for older events
+      evt.isMayhemMode = this.adapter.accountKeys.includes(MAYHEM_FEE_RECIPIENT);
+    }
 
     return {
       protocol: DEX_PROGRAMS.PUMP_FUN.name,
@@ -200,7 +205,8 @@ export class PumpfunEventParser {
       virtualSolReserves: evt.virtualSolReserves?.toString(),
       realTokenReserves: evt.realTokenReserves?.toString(),
       tokenTotalSupply: evt.tokenTotalSupply?.toString(),
-      isMayhemMode,
+      tokenProgram: evt.tokenProgram,
+      isMayhemMode: evt.isMayhemMode,
     } as MemeEvent;
   }
 
