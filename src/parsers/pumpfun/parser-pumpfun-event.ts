@@ -150,7 +150,12 @@ export class PumpfunEventParser {
       },
       fee: evt.fee,
       creatorFee: evt.creatorFee,
-      isMayhemMode
+      isMayhemMode,
+      // Bonding curve reserves after trade
+      virtualSolReserves: evt.virtualSolReserves?.toString(),
+      virtualTokenReserves: evt.virtualTokenReserves?.toString(),
+      realSolReserves: evt.realSolReserves?.toString(),
+      realTokenReserves: evt.realTokenReserves?.toString(),
     } as MemeEvent;
   }
 
@@ -175,6 +180,9 @@ export class PumpfunEventParser {
       evt.tokenTotalSupply = reader.readU64()
     }
 
+    // Check if this is a mayhem mode create
+    const isMayhemMode = this.adapter.accountKeys.includes(MAYHEM_FEE_RECIPIENT);
+
     return {
       protocol: DEX_PROGRAMS.PUMP_FUN.name,
       type: 'CREATE',
@@ -187,6 +195,12 @@ export class PumpfunEventParser {
       uri: evt.uri,
       bondingCurve: evt.bondingCurve,
       creator: evt.creator,
+      // Bonding curve data
+      virtualTokenReserves: evt.virtualTokenReserves?.toString(),
+      virtualSolReserves: evt.virtualSolReserves?.toString(),
+      realTokenReserves: evt.realTokenReserves?.toString(),
+      tokenTotalSupply: evt.tokenTotalSupply?.toString(),
+      isMayhemMode,
     } as MemeEvent;
   }
 

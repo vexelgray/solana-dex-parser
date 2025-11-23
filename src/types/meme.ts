@@ -45,5 +45,13 @@ export interface MemeEvent {
 
   // Pumpfun-specific fields
   isMayhemMode?: boolean; // Pumpfun mayhem mode indicator
+
+  // Bonding curve reserve fields (Pumpfun/Raydium Launchpad)
+  virtualTokenReserves?: string; // Virtual token reserves (bigint as string)
+  virtualSolReserves?: string; // Virtual SOL reserves (bigint as string)
+  realTokenReserves?: string; // Real token reserves (bigint as string)
+  realSolReserves?: string; // Real SOL reserves (bigint as string)
+  tokenTotalSupply?: string; // Token total supply (bigint as string)
+  tokenProgram?: string; // Token program address
 }
 
