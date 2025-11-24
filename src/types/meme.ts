@@ -46,6 +46,11 @@ export interface MemeEvent {
   // Pumpfun-specific fields
   isMayhemMode?: boolean; // Pumpfun mayhem mode indicator
 
+  // Migration-specific fields (MIGRATE event)
+  migratedTokenAmount?: number; // Amount of tokens migrated to AMM pool (u64)
+  migratedSolAmount?: number; // Amount of SOL migrated to AMM pool (u64)
+  migrationFee?: number; // Fee paid for pool migration (u64)
+
   // Bonding curve reserve fields (Pumpfun/Raydium Launchpad)
   virtualTokenReserves?: number; // Virtual token reserves (u64)
   virtualSolReserves?: number; // Virtual SOL reserves (u64)

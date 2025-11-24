@@ -30,6 +30,9 @@ export interface MemeEvent {
     poolBReserve?: number;
     poolFeeRate?: number;
     isMayhemMode?: boolean;
+    migratedTokenAmount?: number;
+    migratedSolAmount?: number;
+    migrationFee?: number;
     virtualTokenReserves?: number;
     virtualSolReserves?: number;
     realTokenReserves?: number;

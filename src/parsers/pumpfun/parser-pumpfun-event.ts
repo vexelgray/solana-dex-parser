@@ -251,6 +251,10 @@ export class PumpfunEventParser {
       bondingCurve: evt.bondingCurve,
       pool: evt.pool,
       poolDex: DEX_PROGRAMS.PUMP_SWAP.name,
+      // Migration amounts
+      migratedTokenAmount: evt.mintAmount ? Number(evt.mintAmount) : undefined,
+      migratedSolAmount: evt.solAmount ? Number(evt.solAmount) : undefined,
+      migrationFee: evt.poolMigrateFee ? Number(evt.poolMigrateFee) : undefined,
     } as MemeEvent
   }
 }

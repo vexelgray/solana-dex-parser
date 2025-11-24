@@ -238,6 +238,10 @@ class PumpfunEventParser {
             bondingCurve: evt.bondingCurve,
             pool: evt.pool,
             poolDex: constants_1.DEX_PROGRAMS.PUMP_SWAP.name,
+            // Migration amounts
+            migratedTokenAmount: evt.mintAmount ? Number(evt.mintAmount) : undefined,
+            migratedSolAmount: evt.solAmount ? Number(evt.solAmount) : undefined,
+            migrationFee: evt.poolMigrateFee ? Number(evt.poolMigrateFee) : undefined,
         };
     }
 }
