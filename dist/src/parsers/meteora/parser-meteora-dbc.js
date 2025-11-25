@@ -18,7 +18,7 @@ class MeteoraDBCParser extends base_parser_1.BaseParser {
     createTradeInfo(event) {
         const trade = {
             type: event.type,
-            pool: [event.pool], // should be BondingCurve
+            Pool: [event.pool], // Bonding curve / pool address
             inputToken: event.inputToken,
             outputToken: event.outputToken,
             user: event.user,
@@ -30,6 +30,13 @@ class MeteoraDBCParser extends base_parser_1.BaseParser {
             timestamp: event.timestamp,
             signature: this.adapter.signature,
             idx: event.idx,
+            // Include fee information extracted from EvtSwap/EvtSwap2 CPI events
+            fee: event.feeRaw ? {
+                mint: event.feeMint,
+                amount: event.fee,
+                amountRaw: event.feeRaw,
+                decimals: event.feeDecimals,
+            } : undefined,
         };
         return this.utils.attachTokenTransferInfo(trade, this.transferActions);
     }
