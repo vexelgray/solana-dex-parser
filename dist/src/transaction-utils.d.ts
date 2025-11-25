@@ -86,7 +86,6 @@ export declare class TransactionUtils {
     getLPTransfers: (transfers: TransferData[]) => TransferData[];
     attachTokenTransferInfo: (trade: TradeInfo, transferActions: Record<string, TransferData[]>) => TradeInfo;
     attachUserBalanceToLPs: (liquidities: PoolEvent[]) => PoolEvent[];
-    attachTradeFee(trade: TradeInfo | null): TradeInfo | null;
     /**
      * Process transfer data for meme token events
      * Handles the common transfer processing logic

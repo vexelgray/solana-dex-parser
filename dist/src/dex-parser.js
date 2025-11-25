@@ -126,7 +126,7 @@ class DexParser {
                         const trades = parser.processTrades();
                         if (trades.length > 0) {
                             if (config.aggregateTrades == true) {
-                                result.aggregateTrade = utils.attachTradeFee((0, utils_1.getFinalSwap)(trades));
+                                result.aggregateTrade = (0, utils_1.getFinalSwap)(trades);
                             }
                             else {
                                 result.trades.push(...trades);
@@ -186,7 +186,7 @@ class DexParser {
             if (result.trades.length > 0) {
                 result.trades = [...new Map(result.trades.map((item) => [`${item.idx}-${item.signature}`, item])).values()];
                 if (config.aggregateTrades == true) {
-                    result.aggregateTrade = utils.attachTradeFee((0, utils_1.getFinalSwap)(result.trades));
+                    result.aggregateTrade = (0, utils_1.getFinalSwap)(result.trades);
                 }
             }
             // Process transfer if needed (if no trades and no liquidity)

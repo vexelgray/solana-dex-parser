@@ -232,7 +232,7 @@ export class DexParser {
             const trades = parser.processTrades();
             if (trades.length > 0) {
               if (config.aggregateTrades == true) {
-                result.aggregateTrade = utils.attachTradeFee(getFinalSwap(trades))!;
+                result.aggregateTrade = getFinalSwap(trades)!;
               } else {
                 result.trades.push(...trades);
               }
@@ -298,7 +298,7 @@ export class DexParser {
       if (result.trades.length > 0) {
         result.trades = [...new Map(result.trades.map((item) => [`${item.idx}-${item.signature}`, item])).values()];
         if (config.aggregateTrades == true) {
-          result.aggregateTrade = utils.attachTradeFee(getFinalSwap(result.trades))!;
+          result.aggregateTrade = getFinalSwap(result.trades)!;
         }
       }
 

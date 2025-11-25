@@ -4,7 +4,6 @@ exports.TransactionUtils = void 0;
 const constants_1 = require("./constants");
 const transfer_compiled_utils_1 = require("./transfer-compiled-utils");
 const transfer_utils_1 = require("./transfer-utils");
-const types_1 = require("./types");
 const utils_1 = require("./utils");
 class TransactionUtils {
     constructor(adapter) {
@@ -459,40 +458,6 @@ class TransactionUtils {
                 sourcePreBalance: transfer.info.sourcePreBalance,
             }
             : null;
-    }
-    attachTradeFee(trade) {
-        if (trade) {
-            if (!trade.fee) {
-                const mint = trade.outputToken.mint;
-                const token = mint == constants_1.TOKENS.SOL
-                    ? this.adapter.getAccountSolBalanceChanges(true).get(trade.user)
-                    : this.adapter.getAccountTokenBalanceChanges(true).get(trade.user)?.get(mint);
-                if (token) {
-                    const feeAmount = BigInt(trade.outputToken.amountRaw) - BigInt(token.change.amount);
-                    if (feeAmount > 0n) {
-                        const feeUiAmount = (0, types_1.convertToUiAmount)(feeAmount, trade.outputToken.decimals);
-                        // add fee
-                        trade.fee = {
-                            mint,
-                            amount: feeUiAmount,
-                            amountRaw: feeAmount.toString(),
-                            decimals: trade.outputToken.decimals,
-                        };
-                        // update outAmount
-                        trade.outputToken.balanceChange = token.change.amount;
-                    }
-                }
-            }
-            if (trade.inputToken.mint == constants_1.TOKENS.SOL) {
-                const token = this.adapter.getAccountSolBalanceChanges(true).get(trade.user);
-                if (token) {
-                    if (Math.abs(token.change.uiAmount || 0) > trade.inputToken.amount) {
-                        trade.inputToken.balanceChange = token.change.amount;
-                    }
-                }
-            }
-        }
-        return trade;
     }
     /**
      * Process transfer data for meme token events
