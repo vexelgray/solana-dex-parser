@@ -128,7 +128,102 @@ class MeteoraDBCEventParser extends base_event_parser_1.BaseEventParser {
                 event.outputToken = trade.outputToken;
             }
         }
+        // Extract fees from EvtSwap/EvtSwap2 CPI event
+        const feeData = this.extractFeesFromSwapEvent(options.outerIndex);
+        if (feeData) {
+            // Fee is in quote token (SOL) for Meteora DBC
+            const feeDecimals = this.adapter.getTokenDecimals(quoteMint);
+            event.fee = Number(feeData.tradingFee + feeData.protocolFee + feeData.referralFee);
+            event.feeRaw = (feeData.tradingFee + feeData.protocolFee + feeData.referralFee).toString();
+            event.feeMint = quoteMint;
+            event.feeDecimals = feeDecimals;
+        }
         return event;
+    }
+    /**
+     * Extract fees from EvtSwap/EvtSwap2 CPI event in inner instructions
+     *
+     * EvtSwap structure (after 16-byte discriminator):
+     * - pool: pubkey (32)
+     * - config: pubkey (32)
+     * - trade_direction: u8 (1)
+     * - has_referral: bool (1)
+     * - params: SwapParameters (16) = { amount_in: u64, minimum_amount_out: u64 }
+     * - swap_result: SwapResult (48) = {
+     *     actual_input_amount: u64 (8)
+     *     output_amount: u64 (8)
+     *     next_sqrt_price: u128 (16)
+     *     trading_fee: u64 (8)
+     *     protocol_fee: u64 (8)
+     *     referral_fee: u64 (8)
+     *   }
+     *
+     * EvtSwap2 structure (after 16-byte discriminator):
+     * - pool: pubkey (32)
+     * - config: pubkey (32)
+     * - trade_direction: u8 (1)
+     * - has_referral: bool (1)
+     * - swap_parameters: SwapParameters2 (17) = { amount_0: u64, amount_1: u64, swap_mode: u8 }
+     * - swap_result: SwapResult2 (64) = {
+     *     included_fee_input_amount: u64 (8)
+     *     excluded_fee_input_amount: u64 (8)
+     *     amount_left: u64 (8)
+     *     output_amount: u64 (8)
+     *     next_sqrt_price: u128 (16)
+     *     trading_fee: u64 (8)
+     *     protocol_fee: u64 (8)
+     *     referral_fee: u64 (8)
+     *   }
+     */
+    extractFeesFromSwapEvent(outerIndex) {
+        try {
+            const innerGroup = this.adapter.innerInstructions?.find((it) => it.index === outerIndex);
+            if (!innerGroup?.instructions?.length)
+                return null;
+            for (const inner of innerGroup.instructions) {
+                try {
+                    const data = (0, utils_1.getInstructionData)(inner);
+                    if (data.length < 100)
+                        continue; // Minimum size for swap events
+                    const discriminator = buffer_1.Buffer.from(data.slice(0, 16));
+                    // Check for EvtSwap2 (newer version)
+                    if (discriminator.equals(buffer_1.Buffer.from(constants_1.DISCRIMINATORS.METEORA_DBC.EVT_SWAP2))) {
+                        // Offset to SwapResult2: 16 (disc) + 32 (pool) + 32 (config) + 1 (direction) + 1 (has_referral) + 17 (SwapParameters2) = 99
+                        // Then skip to fees: 8 + 8 + 8 + 8 + 16 = 48 bytes into SwapResult2
+                        const feeOffset = 16 + 32 + 32 + 1 + 1 + 17 + 8 + 8 + 8 + 8 + 16; // = 147
+                        if (data.length >= feeOffset + 24) {
+                            const feeReader = new binary_reader_1.BinaryReader(buffer_1.Buffer.from(data.slice(feeOffset)));
+                            return {
+                                tradingFee: feeReader.readU64(),
+                                protocolFee: feeReader.readU64(),
+                                referralFee: feeReader.readU64(),
+                            };
+                        }
+                    }
+                    // Check for EvtSwap (older version)
+                    if (discriminator.equals(buffer_1.Buffer.from(constants_1.DISCRIMINATORS.METEORA_DBC.EVT_SWAP))) {
+                        // Offset to SwapResult: 16 (disc) + 32 (pool) + 32 (config) + 1 (direction) + 1 (has_referral) + 16 (SwapParameters) = 98
+                        // Then skip to fees: 8 + 8 + 16 = 32 bytes into SwapResult
+                        const feeOffset = 16 + 32 + 32 + 1 + 1 + 16 + 8 + 8 + 16; // = 130
+                        if (data.length >= feeOffset + 24) {
+                            const feeReader = new binary_reader_1.BinaryReader(buffer_1.Buffer.from(data.slice(feeOffset)));
+                            return {
+                                tradingFee: feeReader.readU64(),
+                                protocolFee: feeReader.readU64(),
+                                referralFee: feeReader.readU64(),
+                            };
+                        }
+                    }
+                }
+                catch {
+                    continue;
+                }
+            }
+        }
+        catch {
+            // Silently ignore fee extraction errors
+        }
+        return null;
     }
     decodeCreateEvent(data, options) {
         const reader = new binary_reader_1.BinaryReader(data);

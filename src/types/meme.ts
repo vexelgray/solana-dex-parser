@@ -26,7 +26,10 @@ export interface MemeEvent {
   totalSupply?: number; // Token total supply
 
   // Fee and economic fields
-  fee?: number; // Fee (uint64 -> number)
+  fee?: number; // Fee in UI units (after decimal conversion)
+  feeRaw?: string; // Fee in raw units (string for bigint precision)
+  feeMint?: string; // Fee token mint address
+  feeDecimals?: number; // Fee token decimals
   protocolFee?: number; // Protocol fee
   platformFee?: number; // Platform fee
   shareFee?: number; // Share fee

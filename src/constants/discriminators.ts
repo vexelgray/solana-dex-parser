@@ -145,6 +145,9 @@ export const DISCRIMINATORS = {
     INITIALIZE_VIRTUAL_POOL_WITH_TOKEN2022: new Uint8Array([169, 118, 51, 78, 145, 110, 220, 155]),
     METEORA_DBC_MIGRATE_DAMM: new Uint8Array([27, 1, 48, 22, 180, 63, 118, 217]),
     METEORA_DBC_MIGRATE_DAMM_V2: new Uint8Array([156, 169, 230, 103, 53, 228, 80, 64]),
+    // CPI Events (16 bytes: 8-byte Anchor prefix + 8-byte event discriminator)
+    EVT_SWAP: new Uint8Array([228, 69, 165, 46, 81, 203, 154, 29, 27, 60, 21, 213, 138, 170, 187, 147]),
+    EVT_SWAP2: new Uint8Array([228, 69, 165, 46, 81, 203, 154, 29, 189, 66, 51, 168, 38, 80, 117, 153]),
   },
   ORCA: {
     CREATE: new Uint8Array([242, 29, 134, 48, 58, 110, 14, 60]), // openPositionWithMetadata

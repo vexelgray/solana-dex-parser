@@ -16,6 +16,9 @@ export interface MemeEvent {
     decimals?: number;
     totalSupply?: number;
     fee?: number;
+    feeRaw?: string;
+    feeMint?: string;
+    feeDecimals?: number;
     protocolFee?: number;
     platformFee?: number;
     shareFee?: number;

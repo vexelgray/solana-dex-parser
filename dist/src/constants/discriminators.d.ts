@@ -140,6 +140,8 @@ export declare const DISCRIMINATORS: {
         readonly INITIALIZE_VIRTUAL_POOL_WITH_TOKEN2022: Uint8Array<ArrayBuffer>;
         readonly METEORA_DBC_MIGRATE_DAMM: Uint8Array<ArrayBuffer>;
         readonly METEORA_DBC_MIGRATE_DAMM_V2: Uint8Array<ArrayBuffer>;
+        readonly EVT_SWAP: Uint8Array<ArrayBuffer>;
+        readonly EVT_SWAP2: Uint8Array<ArrayBuffer>;
     };
     readonly ORCA: {
         readonly CREATE: Uint8Array<ArrayBuffer>;
