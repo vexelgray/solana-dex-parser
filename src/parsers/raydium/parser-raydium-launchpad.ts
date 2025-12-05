@@ -31,18 +31,8 @@ export class RaydiumLaunchpadParser extends BaseParser {
     const baseMint = event.baseMint!;
     const quoteMint = event.quoteMint!;
     const [inputToken, inputDecimal, outputToken, outputDecimal] = isBuy
-      ? [
-          quoteMint,
-          this.adapter.splDecimalsMap.get(quoteMint),
-          baseMint,
-          this.adapter.splDecimalsMap.get(baseMint),
-        ]
-      : [
-          baseMint,
-          this.adapter.splDecimalsMap.get(baseMint),
-          quoteMint,
-          this.adapter.splDecimalsMap.get(quoteMint),
-        ];
+      ? [quoteMint, this.adapter.splDecimalsMap.get(quoteMint), baseMint, this.adapter.splDecimalsMap.get(baseMint)]
+      : [baseMint, this.adapter.splDecimalsMap.get(baseMint), quoteMint, this.adapter.splDecimalsMap.get(quoteMint)];
 
     if (!inputToken || !outputToken) throw new Error('Token not found');
 
