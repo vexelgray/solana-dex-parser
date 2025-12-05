@@ -1,11 +1,14 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.BoopfunEventParser = void 0;
+exports.BoopfunConfigCache = exports.BoopfunEventParser = void 0;
 const constants_1 = require("../../constants");
 const instruction_classifier_1 = require("../../instruction-classifier");
 const types_1 = require("../../types");
 const utils_1 = require("../../utils");
 const binary_reader_1 = require("../binary-reader");
+const boopfun_config_cache_1 = require("./boopfun-config-cache");
+// Boopfun token decimals (from Config account verification)
+const BOOPFUN_DECIMALS = 9;
 /**
  * Parse Boopfun events (CREATE/BUY/SELL/COMPLETE)
  */
@@ -13,6 +16,7 @@ class BoopfunEventParser {
     constructor(adapter, transferActions) {
         this.adapter = adapter;
         this.transferActions = transferActions;
+        this.configData = null;
         this.eventParsers = {
             BUY: {
                 discriminators: [constants_1.DISCRIMINATORS.BOOPFUN.BUY],
@@ -35,6 +39,27 @@ class BoopfunEventParser {
                 decode: this.decodeCompleteEvent.bind(this),
             },
         };
+    }
+    /**
+     * Set config data from cache or RPC
+     * Call this before processEvents() if you want to use actual on-chain values
+     *
+     * @param configAddress The Boopfun Config account address
+     */
+    setConfigFromCache(configAddress) {
+        const cached = boopfun_config_cache_1.BoopfunConfigCache.get(configAddress);
+        if (cached) {
+            this.configData = cached;
+        }
+    }
+    /**
+     * Get the current config data (cached or defaults)
+     */
+    getConfig() {
+        if (this.configData) {
+            return this.configData;
+        }
+        return boopfun_config_cache_1.BoopfunConfigCache.getDefaults();
     }
     processEvents() {
         const instructions = new instruction_classifier_1.InstructionClassifier(this.adapter).getInstructions(constants_1.DEX_PROGRAMS.BOOP_FUN.id);
@@ -86,18 +111,19 @@ class BoopfunEventParser {
             tokenAmount: BigInt(transfer?.info.tokenAmount.amount || '0'),
             isBuy: true,
             user: accounts[6],
-            bondingCurve: accounts[1],
+            poolAddress: accounts[1],
         };
         const inputMint = evt.quoteMint;
         const inputAmount = evt.solAmount;
         const inputDecimals = 9;
         const outputMint = evt.mint;
         const outputAmount = evt.tokenAmount;
-        const outputDecimals = 6;
+        const outputDecimals = BOOPFUN_DECIMALS;
         return {
             protocol: constants_1.DEX_PROGRAMS.BOOP_FUN.name,
+            launchpad: constants_1.DEX_PROGRAMS.BOOP_FUN.name,
             type: 'BUY',
-            bondingCurve: evt.bondingCurve,
+            poolAddress: evt.poolAddress,
             baseMint: evt.mint,
             quoteMint: evt.quoteMint,
             user: evt.user,
@@ -129,18 +155,19 @@ class BoopfunEventParser {
             tokenAmount: reader.readU64(),
             isBuy: false,
             user: accounts[6],
-            bondingCurve: accounts[1],
+            poolAddress: accounts[1],
         };
         const inputMint = evt.mint;
         const inputAmount = evt.tokenAmount;
-        const inputDecimals = 6;
+        const inputDecimals = BOOPFUN_DECIMALS;
         const outputMint = evt.quoteMint;
         const outputAmount = evt.solAmount;
         const outputDecimals = 9;
         return {
             protocol: constants_1.DEX_PROGRAMS.BOOP_FUN.name,
+            launchpad: constants_1.DEX_PROGRAMS.BOOP_FUN.name,
             type: 'SELL',
-            bondingCurve: evt.bondingCurve,
+            poolAddress: evt.poolAddress,
             baseMint: evt.mint,
             quoteMint: evt.quoteMint,
             user: evt.user,
@@ -174,21 +201,45 @@ class BoopfunEventParser {
         const classifier = new instruction_classifier_1.InstructionClassifier(this.adapter);
         const deployInst = classifier.getInstructionByDescriminator(Buffer.from(constants_1.DISCRIMINATORS.BOOPFUN.DEPLOY), 8);
         const deployAccounts = this.adapter.getInstructionAccounts(deployInst?.instruction);
-        const bondingCurve = deployAccounts[2];
-        const platformConfig = deployAccounts[5];
+        const poolAddress = deployAccounts[2];
+        const configAddress = deployAccounts[5];
+        // Get config data for reserves
+        const config = this.getConfig();
+        // SPL Token program (default for Boopfun)
+        const SPL_TOKEN_PROGRAM = 'TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA';
         return {
             protocol: constants_1.DEX_PROGRAMS.BOOP_FUN.name,
+            launchpad: constants_1.DEX_PROGRAMS.BOOP_FUN.name,
             type: 'CREATE',
             timestamp: this.adapter.blockTime,
             user: evt.user,
-            baseMint: evt.mint,
-            quoteMint: constants_1.TOKENS.SOL,
-            name: evt.name,
-            symbol: evt.symbol,
-            uri: evt.uri,
-            bondingCurve: bondingCurve,
-            creator: evt.user,
-            platformConfig: platformConfig
+            // Grouped token structures for CREATE events
+            baseToken: {
+                mint: evt.mint,
+                name: evt.name,
+                symbol: evt.symbol,
+                uri: evt.uri,
+                decimals: BOOPFUN_DECIMALS,
+                totalSupply: Number(config.totalSupply),
+                programId: SPL_TOKEN_PROGRAM,
+            },
+            quoteToken: {
+                mint: constants_1.TOKENS.SOL,
+                symbol: 'SOL',
+                decimals: 9,
+            },
+            creatorAddress: evt.user,
+            poolAddress: poolAddress,
+            configAddress: configAddress,
+            // Bonding curve reserves (from Config account)
+            curveType: 'ConstantProduct',
+            curveBaseReserves: Number(config.virtualTokenReserves),
+            curveQuoteReserves: Number(config.virtualSolReserves),
+            vaultBaseReserves: Number(config.totalSupply),
+            vaultQuoteReserves: 0,
+            // Goals
+            initialSaleSupply: Number(config.totalSupply),
+            graduationThreshold: Number(config.graduationTarget),
         };
     }
     decodeCompleteEvent(data, options) {
@@ -202,18 +253,19 @@ class BoopfunEventParser {
         const evt = {
             user: accounts[10],
             mint: accounts[0],
-            bondingCurve: accounts[7],
+            poolAddress: accounts[7],
             solAmount: BigInt(sols[0].info.tokenAmount.amount),
             feeAmount: sols.length > 1 ? BigInt(sols[1].info.tokenAmount.amount) : BigInt(0),
         };
         return {
             protocol: constants_1.DEX_PROGRAMS.BOOP_FUN.name,
+            launchpad: constants_1.DEX_PROGRAMS.BOOP_FUN.name,
             type: 'COMPLETE',
             timestamp: this.adapter.blockTime,
             user: evt.user,
             baseMint: evt.mint,
             quoteMint: constants_1.TOKENS.SOL,
-            bondingCurve: evt.bondingCurve,
+            poolAddress: evt.poolAddress,
         };
     }
     getTransfersForInstruction(programId, outerIndex, innerIndex) {
@@ -223,4 +275,7 @@ class BoopfunEventParser {
     }
 }
 exports.BoopfunEventParser = BoopfunEventParser;
+// Re-export config cache for external use
+var boopfun_config_cache_2 = require("./boopfun-config-cache");
+Object.defineProperty(exports, "BoopfunConfigCache", { enumerable: true, get: function () { return boopfun_config_cache_2.BoopfunConfigCache; } });
 //# sourceMappingURL=parser-boopfun-event.js.map

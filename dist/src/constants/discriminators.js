@@ -175,14 +175,20 @@ exports.DISCRIMINATORS = {
         CREATE_MINT: new Uint8Array([42]),
     },
     SUGAR: {
+        // Instruction discriminators
         BUY_EXACT_IN: new Uint8Array([250, 234, 13, 123, 213, 156, 19, 236]),
         BUY_EXACT_OUT: new Uint8Array([24, 211, 116, 40, 105, 3, 153, 56]),
         BUY_MAX_OUT: new Uint8Array([96, 177, 203, 117, 183, 65, 196, 177]),
         SELL_EXACT_IN: new Uint8Array([149, 39, 222, 155, 211, 124, 152, 26]),
-        SELL_EXACT_OUT: new Uint8Array([149, 95, 200, 71, 34, 8, 9, 11, 166]),
+        SELL_EXACT_OUT: new Uint8Array([95, 200, 71, 34, 8, 9, 11, 166]),
         CREATE: new Uint8Array([24, 30, 200, 40, 5, 28, 7, 119]),
         INITIALIZE: new Uint8Array([175, 175, 109, 31, 13, 152, 155, 237]),
         MIGRATE_TO_RADIUM: new Uint8Array([96, 230, 91, 140, 139, 40, 235, 142]),
+        // Event discriminators (from IDL)
+        TRADE_EVENT: new Uint8Array([228, 69, 165, 46, 81, 203, 154, 29, 189, 219, 127, 211, 78, 230, 97, 238]),
+        CREATE_EVENT: new Uint8Array([228, 69, 165, 46, 81, 203, 154, 29, 27, 114, 169, 77, 222, 235, 99, 118]),
+        COMPLETE_EVENT: new Uint8Array([228, 69, 165, 46, 81, 203, 154, 29, 95, 114, 97, 156, 212, 46, 152, 8]),
+        MIGRATE_EVENT: new Uint8Array([228, 69, 165, 46, 81, 203, 154, 29, 216, 175, 231, 95, 45, 98, 108, 21]),
     },
 };
 //# sourceMappingURL=discriminators.js.map

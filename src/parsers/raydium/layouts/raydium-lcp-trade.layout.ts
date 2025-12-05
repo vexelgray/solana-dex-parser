@@ -87,6 +87,7 @@ export class RaydiumLCPTradeLayout {
       realBaseBefore: BigInt(this.realBaseBefore),
       realQuoteBefore: BigInt(this.realQuoteBefore),
       realBaseAfter: BigInt(this.realBaseAfter),
+      realQuoteAfter: BigInt(this.realQuoteAfter),
       amountIn: BigInt(this.amountIn),
       amountOut: BigInt(this.amountOut),
       protocolFee: BigInt(this.protocolFee),

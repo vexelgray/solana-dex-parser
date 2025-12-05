@@ -7,7 +7,7 @@ const web3_js_1 = require("@solana/web3.js");
 const dotenv_1 = __importDefault(require("dotenv"));
 const parsers_1 = require("../parsers");
 const transaction_adapter_1 = require("../transaction-adapter");
-const types_1 = require("../types");
+// Note: MemeEvent uses string types ('BUY', 'SELL') for type field
 dotenv_1.default.config();
 describe('Parser', () => {
     let connection;
@@ -33,14 +33,14 @@ describe('Parser', () => {
             const buy = events[1];
             console.log('create events', events);
             // create
-            expect(create.pool).toEqual("CPTNvVYT7qCzX3HnRRtSRAFpMipVgSP3eynXrW9p9YgD");
+            expect(create.bondingCurve).toEqual("CPTNvVYT7qCzX3HnRRtSRAFpMipVgSP3eynXrW9p9YgD");
             expect(create.creator).toEqual("J88snVaNTCW7T6saPvAmYDmjnhPiSpkw8uJ8FFCyfcGA");
             // expect(create.config).toEqual("6s1xP3hpbAfFoNtUNF8mfHsjr2Bd97JxFJRWLbL6aHuX");
             expect(create.symbol).toEqual("TOAST");
             // expect(create.curveParam.variant).toEqual("Constant");
-            expect(create.totalSupply).toEqual("1000000000000000");
+            expect(create.tokenTotalSupply).toEqual("1000000000000000");
             // buy
-            expect(buy.pool).toEqual("CPTNvVYT7qCzX3HnRRtSRAFpMipVgSP3eynXrW9p9YgD");
+            expect(buy.bondingCurve).toEqual("CPTNvVYT7qCzX3HnRRtSRAFpMipVgSP3eynXrW9p9YgD");
             expect(buy.inputToken?.amountRaw.toString()).toEqual("10000000");
             expect(buy.outputToken?.amountRaw.toString()).toEqual("353971575213");
             expect(buy.type).toEqual('BUY');
@@ -87,10 +87,10 @@ describe('Parser', () => {
             const event = parser.processEvents()[0];
             ;
             console.log(event);
-            expect(event.pool).toEqual("GeSSWHbFkeYknLX3edkTP3JcsjHRnCJG3SymEkBzaFDo");
+            expect(event.bondingCurve).toEqual("GeSSWHbFkeYknLX3edkTP3JcsjHRnCJG3SymEkBzaFDo");
             expect(event.inputToken?.amountRaw.toString()).toEqual("50000000");
             expect(event.outputToken?.amountRaw.toString()).toEqual("353067172960");
-            expect(event.type).toEqual(types_1.TradeDirection.Buy);
+            expect(event.type).toEqual('BUY');
         });
         it('sell_exact_in', async () => {
             const tx = await connection.getTransaction('36n8GMHRMSyX8kRSgaUfcE5jpjWNWhjAu7YPeYFX2fMVzirJT4YhvYMo4dS5VoCVj5H47qZ8FzSEDLc6ui78HcAh', // create & complete
@@ -102,10 +102,10 @@ describe('Parser', () => {
             const parser = new parsers_1.RaydiumLaunchpadEventParser(new transaction_adapter_1.TransactionAdapter(tx), {});
             const event = parser.processEvents()[0];
             console.log(event);
-            expect(event.pool).toEqual("7SgAC6oe5jwb58JaK2KMXDnAL7JxnaH1DX5nc6BEp7Ng");
+            expect(event.bondingCurve).toEqual("7SgAC6oe5jwb58JaK2KMXDnAL7JxnaH1DX5nc6BEp7Ng");
             expect(event.inputToken?.amountRaw.toString()).toEqual("26252327418406");
             expect(event.outputToken?.amountRaw.toString()).toEqual("744875999");
-            expect(event.type).toEqual(types_1.TradeDirection.Sell);
+            expect(event.type).toEqual('SELL');
         });
     });
 });

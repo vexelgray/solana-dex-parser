@@ -71,6 +71,7 @@ export interface RaydiumLCPTradeEvent {
   realBaseBefore: bigint;
   realQuoteBefore: bigint;
   realBaseAfter: bigint;
+  realQuoteAfter: bigint;
   amountIn: bigint;
   amountOut: bigint;
   protocolFee: bigint;

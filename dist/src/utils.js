@@ -89,6 +89,8 @@ const getPubkeyString = (value) => {
         return bs58_1.default.encode(value.data);
     if (value instanceof Buffer)
         return bs58_1.default.encode(value);
+    if (value instanceof Uint8Array)
+        return bs58_1.default.encode(value);
     return value;
 };
 exports.getPubkeyString = getPubkeyString;

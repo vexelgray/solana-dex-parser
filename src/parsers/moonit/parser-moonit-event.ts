@@ -12,10 +12,15 @@ import { BaseEventParser } from '../base-event-parser';
 import { BinaryReader } from '../binary-reader';
 import { TransactionAdapter } from '../../transaction-adapter';
 import { TransactionUtils } from '../../transaction-utils';
+import { MoonitConfigCache, MoonitCurveData } from './moonit-config-cache';
+
+// Moonit token decimals (default)
+const MOONIT_DECIMALS = 9;
 
 export class MoonitEventParser extends BaseEventParser {
 
   protected utils: TransactionUtils;
+  private curveData: MoonitCurveData | null = null;
 
   constructor(
     protected adapter: TransactionAdapter,
@@ -23,6 +28,29 @@ export class MoonitEventParser extends BaseEventParser {
   ) {
     super(adapter, transferActions);
     this.utils = new TransactionUtils(adapter);
+  }
+
+  /**
+   * Set curve data from cache or RPC
+   * Call this before processEvents() if you want to use actual on-chain values
+   *
+   * @param curveAddress The Moonit CurveAccount address
+   */
+  setCurveFromCache(curveAddress: string): void {
+    const cached = MoonitConfigCache.get(curveAddress);
+    if (cached) {
+      this.curveData = cached;
+    }
+  }
+
+  /**
+   * Get the current curve data (cached or defaults)
+   */
+  private getCurveDefaults(): Omit<MoonitCurveData, 'curveAddress' | 'mint' | 'createdAt' | 'lastAccessedAt'> {
+    if (this.curveData) {
+      return this.curveData;
+    }
+    return MoonitConfigCache.getDefaults();
   }
 
   private readonly eventParsers: Record<string, EventsParser<any>> = {
@@ -110,21 +138,24 @@ export class MoonitEventParser extends BaseEventParser {
 
     const event = {
       protocol: DEX_PROGRAMS.MOONIT.name,
+      launchpad: DEX_PROGRAMS.MOONIT.name,
       type: 'BUY',
       baseMint: outputMint,    // base_mint
       quoteMint: inputMint,   // quote_mint
-      bondingCurve: pool, // pool
+      poolAddress: pool, // pool
       pool: pool, // pool
       user: user,
       inputToken: {
         mint: inputMint,
         amountRaw: inputAmount.toString(),
+        decimals: 9, // SOL decimals
       },
       outputToken: {
         mint: outputMint,
         amountRaw: outputAmount.toString(),
+        decimals: MOONIT_DECIMALS,
       },
-      platformConfig: accounts[12]
+      configAddress: accounts[12]
     } as MemeEvent;
 
     return this.utils.processMemeTransferData(options, event, outputMint, false, 0, this.transferActions);
@@ -140,10 +171,11 @@ export class MoonitEventParser extends BaseEventParser {
 
     const event = {
       protocol: DEX_PROGRAMS.MOONIT.name,
+      launchpad: DEX_PROGRAMS.MOONIT.name,
       type: 'SELL',
       baseMint: baseMint,    // base_mint
       quoteMint: collateralMint,   // quote_mint
-      bondingCurve: pool, // pool
+      poolAddress: pool, // pool
       pool: pool, // pool
       user: user,
       inputToken: {
@@ -173,38 +205,64 @@ export class MoonitEventParser extends BaseEventParser {
     const uri = reader.readString();
     const decimals = reader.readU8();
     reader.readU8(); // skip
-    const totalSupply = convertToUiAmount(reader.readU64(), decimals);
+    const totalSupplyRaw = reader.readU64();
+    const totalSupply = convertToUiAmount(totalSupplyRaw, decimals);
 
     const [pool, baseMint, user] = [accounts[2], accounts[3], accounts[0]];
 
+    // SPL Token program (default for Moonit)
+    const SPL_TOKEN_PROGRAM = 'TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA';
+
+    // Get curve data defaults
+    const curveDefaults = this.getCurveDefaults();
+
     return {
       protocol: DEX_PROGRAMS.MOONIT.name,
+      launchpad: DEX_PROGRAMS.MOONIT.name,
       type: 'CREATE',
       timestamp: this.adapter.blockTime,
       pool: pool,
-      bondingCurve: pool,
+      poolAddress: pool,
       user: user,
-      creator: user,
-      baseMint: baseMint,
-      quoteMint: TOKENS.SOL,
-      name: name,
-      symbol: symbol,
-      uri: uri,
-      decimals: decimals,
-      totalSupply: totalSupply,
-    } as MemeEvent
+      // Grouped token structures for CREATE events
+      baseToken: {
+        mint: baseMint,
+        name: name,
+        symbol: symbol,
+        uri: uri,
+        decimals: decimals,
+        totalSupply: totalSupply,
+        programId: SPL_TOKEN_PROGRAM,
+      },
+      quoteToken: {
+        mint: TOKENS.SOL,
+        symbol: 'SOL',
+        decimals: 9,
+      },
+      creatorAddress: user,
+      // Bonding curve info (Moonit uses LinearV1, not ConstantProduct)
+      curveType: 'LinearV1',
+      curveBaseReserves: Number(curveDefaults.curveAmount), // tokens remaining in curve
+      curveQuoteReserves: 0, // SOL starts at 0 for linear curve
+      vaultBaseReserves: Number(curveDefaults.totalSupply),
+      vaultQuoteReserves: 0,
+      // Goals
+      initialSaleSupply: Number(curveDefaults.totalSupply),
+      graduationThreshold: Number(curveDefaults.marketcapThreshold),
+    } as unknown as MemeEvent
   }
 
   private decodeMigrateEvent(data: Buffer, options: any): MemeEvent | null {
     const accounts = this.adapter.getInstructionAccounts(options.instruction);
 
-    const [bondingCurve, baseMint] = [accounts[2], accounts[5]];
+    const [poolAddress, baseMint] = [accounts[2], accounts[5]];
 
     return {
       protocol: DEX_PROGRAMS.MOONIT.name,
+      launchpad: DEX_PROGRAMS.MOONIT.name,
       type: 'MIGRATE',
       timestamp: this.adapter.blockTime,
-      bondingCurve: bondingCurve,
+      poolAddress: poolAddress,
       baseMint: baseMint,
       quoteMint: TOKENS.SOL,
     } as MemeEvent
@@ -276,3 +334,6 @@ export class MoonitEventParser extends BaseEventParser {
     };
   }
 }
+
+// Re-export config cache for external use
+export { MoonitConfigCache } from './moonit-config-cache';

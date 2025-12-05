@@ -9,6 +9,16 @@ const parser_jupiter_dca_1 = require("./parsers/jupiter/parser-jupiter-dca");
 const transaction_adapter_1 = require("./transaction-adapter");
 const transaction_utils_1 = require("./transaction-utils");
 const utils_1 = require("./utils");
+// Programs that should NOT be treated as unknown DEX (false positives)
+// These programs may have transfers but are not swap/trade protocols
+const NON_DEX_PROGRAMS = [
+    constants_1.METAPLEX_PROGRAM_ID, // Token metadata program - used for NFT/token creation
+    'TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA', // SPL Token Program
+    'TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb', // Token-2022 Program
+    'ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL', // Associated Token Program
+    '11111111111111111111111111111111', // System Program
+    'ComputeBudget111111111111111111111111111111', // Compute Budget Program
+];
 /**
  * Main parser class for Solana DEX transactions
  */
@@ -83,7 +93,7 @@ class DexParser {
             signature: '',
             signer: [],
             computeUnits: 0,
-            txStatus: 'unknown'
+            txStatus: 'unknown',
         };
         try {
             const adapter = new transaction_adapter_1.TransactionAdapter(tx, config);
@@ -152,8 +162,8 @@ class DexParser {
                         const parser = new TradeParserClass(adapter, { ...dexInfo, programId: programId, amm: (0, utils_1.getProgramName)(programId) }, transferActions, classifiedInstructions);
                         result.trades.push(...parser.processTrades());
                     }
-                    else if (config?.tryUnknowDEX) {
-                        // Handle unknown DEX programs
+                    else if (config?.tryUnknowDEX && !NON_DEX_PROGRAMS.includes(programId)) {
+                        // Handle unknown DEX programs (exclude known non-DEX programs)
                         const transfers = Object.entries(transferActions).find(([key]) => key.startsWith(programId))?.[1];
                         if (transfers && transfers.length >= 2 && transfers.some((it) => adapter.isSupportedToken(it.info.mint))) {
                             const trade = utils.processSwapData(transfers, {

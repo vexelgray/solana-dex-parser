@@ -73,6 +73,7 @@ export const getPubkeyString = (value: any): string => {
   if (value instanceof PublicKey) return value.toBase58();
   if ('type' in value && value.type == 'Buffer') return base58.encode(value.data);
   if (value instanceof Buffer) return base58.encode(value);
+  if (value instanceof Uint8Array) return base58.encode(value);
   return value;
 };
 

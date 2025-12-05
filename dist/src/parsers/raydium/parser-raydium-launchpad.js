@@ -17,18 +17,21 @@ class RaydiumLaunchpadParser extends base_parser_1.BaseParser {
     }
     createTradeInfo(event) {
         const isBuy = event.type == 'BUY';
+        // For TRADE events, baseMint and quoteMint are always present
+        const baseMint = event.baseMint;
+        const quoteMint = event.quoteMint;
         const [inputToken, inputDecimal, outputToken, outputDecimal] = isBuy
             ? [
-                event.quoteMint,
-                this.adapter.splDecimalsMap.get(event.quoteMint),
-                event.baseMint,
-                this.adapter.splDecimalsMap.get(event.baseMint),
+                quoteMint,
+                this.adapter.splDecimalsMap.get(quoteMint),
+                baseMint,
+                this.adapter.splDecimalsMap.get(baseMint),
             ]
             : [
-                event.baseMint,
-                this.adapter.splDecimalsMap.get(event.baseMint),
-                event.quoteMint,
-                this.adapter.splDecimalsMap.get(event.quoteMint),
+                baseMint,
+                this.adapter.splDecimalsMap.get(baseMint),
+                quoteMint,
+                this.adapter.splDecimalsMap.get(quoteMint),
             ];
         if (!inputToken || !outputToken)
             throw new Error('Token not found');

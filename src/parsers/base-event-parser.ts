@@ -1,6 +1,5 @@
 import { TransactionAdapter } from '../transaction-adapter';
-import { TransferData } from '../types';
-import { MemeEvent } from '../types/meme';
+import { MemeEvent, TransferData } from '../types';
 
 export abstract class BaseEventParser {
 

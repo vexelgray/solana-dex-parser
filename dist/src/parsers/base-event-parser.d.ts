@@ -1,6 +1,5 @@
 import { TransactionAdapter } from '../transaction-adapter';
-import { TransferData } from '../types';
-import { MemeEvent } from '../types/meme';
+import { MemeEvent, TransferData } from '../types';
 export declare abstract class BaseEventParser {
     protected readonly adapter: TransactionAdapter;
     protected readonly transferActions: Record<string, TransferData[]>;

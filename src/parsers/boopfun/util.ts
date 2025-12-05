@@ -15,7 +15,7 @@ export const getBoopfunTradeInfo = (
   const isBuy = event.type === 'BUY';
   return {
     type: event.type,
-    Pool: event.bondingCurve ? [event.bondingCurve] : [],
+    Pool: event.poolAddress ? [event.poolAddress] : [],
     inputToken: event.inputToken!,
     outputToken: event.outputToken!,
     user: event.user,

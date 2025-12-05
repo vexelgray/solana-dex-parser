@@ -7,7 +7,7 @@ const utils_1 = require("../../utils");
 const getPumpfunTradeInfo = (event, info) => {
     return {
         type: event.type,
-        Pool: event.bondingCurve ? [event.bondingCurve] : [],
+        Pool: event.poolAddress ? [event.poolAddress] : [],
         inputToken: event.inputToken,
         outputToken: event.outputToken,
         user: event.user,

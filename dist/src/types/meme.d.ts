@@ -1,4 +1,18 @@
 import { TokenInfo, TradeType } from './trade';
+export interface BaseTokenInfo {
+    mint: string;
+    name: string;
+    symbol: string;
+    uri: string;
+    decimals: number;
+    totalSupply: number;
+    programId?: string;
+}
+export interface QuoteTokenInfo {
+    mint: string;
+    symbol: string;
+    decimals: number;
+}
 export interface MemeEvent {
     type: TradeType;
     timestamp: number;
@@ -6,15 +20,13 @@ export interface MemeEvent {
     slot: number;
     signature: string;
     user: string;
-    baseMint: string;
-    quoteMint: string;
+    baseToken?: BaseTokenInfo;
+    quoteToken?: QuoteTokenInfo;
+    creatorAddress?: string;
+    baseMint?: string;
+    quoteMint?: string;
     inputToken?: TokenInfo;
     outputToken?: TokenInfo;
-    name?: string;
-    symbol?: string;
-    uri?: string;
-    decimals?: number;
-    totalSupply?: number;
     fee?: number;
     feeRaw?: string;
     feeMint?: string;
@@ -24,22 +36,23 @@ export interface MemeEvent {
     shareFee?: number;
     creatorFee?: number;
     protocol?: string;
-    platformConfig?: string;
-    creator?: string;
-    bondingCurve?: string;
+    launchpad?: string;
+    platform?: string;
+    configAddress?: string;
+    poolAddress?: string;
     pool?: string;
     poolDex?: string;
     poolAReserve?: number;
     poolBReserve?: number;
     poolFeeRate?: number;
-    isMayhemMode?: boolean;
     migratedTokenAmount?: number;
     migratedSolAmount?: number;
     migrationFee?: number;
-    virtualTokenReserves?: number;
-    virtualSolReserves?: number;
-    realTokenReserves?: number;
-    realSolReserves?: number;
-    tokenTotalSupply?: number;
-    tokenProgram?: string;
+    curveType?: string;
+    curveBaseReserves?: number;
+    curveQuoteReserves?: number;
+    vaultBaseReserves?: number;
+    vaultQuoteReserves?: number;
+    initialSaleSupply?: number;
+    graduationThreshold?: number;
 }

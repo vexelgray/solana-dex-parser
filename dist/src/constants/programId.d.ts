@@ -1,4 +1,4 @@
-import { PublicKey } from "@solana/web3.js";
+import { PublicKey } from '@solana/web3.js';
 export declare const DEX_PROGRAMS: {
     JUPITER: {
         id: string;
@@ -316,3 +316,18 @@ export declare const ASSOCIATED_TOKEN_PROGRAM_ID: PublicKey;
 export declare const PUMPFUN_MIGRATORS: string[];
 export declare const METAPLEX_PROGRAM_ID = "metaqbxxUerdq28cj1RbAWkYQm3ybzjb6a8bt518x1s";
 export declare const FEE_ACCOUNTS: string[];
+/**
+ * Launchpads with feeClaimer as SIGNER - check transaction signers
+ */
+export declare const METEORA_DBC_LAUNCHPAD_SIGNERS: Record<string, string>;
+/**
+ * Launchpads that invoke Meteora DBC via CPI - check caller programs
+ */
+export declare const METEORA_DBC_LAUNCHPAD_PROGRAMS: Record<string, string>;
+/** @deprecated Use METEORA_DBC_LAUNCHPAD_SIGNERS and METEORA_DBC_LAUNCHPAD_PROGRAMS */
+export declare const METEORA_DBC_LAUNCHPADS: Record<string, string>;
+/**
+ * Raydium Launchpad platform configs that identify specific launchpads.
+ * The config address in CREATE events identifies which launchpad was used.
+ */
+export declare const RAYDIUM_LCP_LAUNCHPAD_CONFIGS: Record<string, string>;

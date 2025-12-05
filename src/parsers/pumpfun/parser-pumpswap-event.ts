@@ -1,9 +1,17 @@
-import { DEX_PROGRAMS, DISCRIMINATORS } from '../../constants';
+import { Buffer } from 'buffer';
+import { DEX_PROGRAMS } from '../../constants';
+import {
+  pumpswapDecoder,
+  PumpswapBuyEventDecoded,
+  PumpswapSellEventDecoded,
+  PumpswapCreatePoolEventDecoded,
+  PumpswapDepositEventDecoded,
+  PumpswapWithdrawEventDecoded,
+} from '../../decoders';
 import { InstructionClassifier } from '../../instruction-classifier';
 import { TransactionAdapter } from '../../transaction-adapter';
 import {
   ClassifiedInstruction,
-  EventParser,
   PumpswapBuyEvent,
   PumpswapCreatePoolEvent,
   PumpswapDepositEvent,
@@ -12,36 +20,9 @@ import {
   PumpswapWithdrawEvent,
 } from '../../types';
 import { getInstructionData, sortByIdx } from '../../utils';
-import { BinaryReader } from '../binary-reader';
-
-// Pumpfun mayhem mode fee recipient
-const MAYHEM_FEE_RECIPIENT = 'GesfTA3X2arioaHp8bbKdjG9vJtskViWACZoYvxp4twS';
 
 export class PumpswapEventParser {
   constructor(private readonly adapter: TransactionAdapter) {}
-
-  private readonly eventParsers: Record<string, EventParser<any>> = {
-    CREATE: {
-      discriminator: DISCRIMINATORS.PUMPSWAP.CREATE_POOL_EVENT,
-      decode: this.decodeCreateEvent.bind(this),
-    },
-    ADD: {
-      discriminator: DISCRIMINATORS.PUMPSWAP.ADD_LIQUIDITY_EVENT,
-      decode: this.decodeAddLiquidity.bind(this),
-    },
-    REMOVE: {
-      discriminator: DISCRIMINATORS.PUMPSWAP.REMOVE_LIQUIDITY_EVENT,
-      decode: this.decodeRemoveLiquidity.bind(this),
-    },
-    BUY: {
-      discriminator: DISCRIMINATORS.PUMPSWAP.BUY_EVENT,
-      decode: this.decodeBuyEvent.bind(this),
-    },
-    SELL: {
-      discriminator: DISCRIMINATORS.PUMPSWAP.SELL_EVENT,
-      decode: this.decodeSellEvent.bind(this),
-    },
-  };
 
   public processEvents(): PumpswapEvent[] {
     const instructions = new InstructionClassifier(this.adapter).getInstructions(DEX_PROGRAMS.PUMP_SWAP.id);
@@ -54,174 +35,172 @@ export class PumpswapEventParser {
         .map(({ instruction, outerIndex, innerIndex }) => {
           try {
             const data = getInstructionData(instruction);
-            const discriminator = Buffer.from(data.slice(0, 16));
+            const buffer = Buffer.from(data);
 
-            for (const [type, parser] of Object.entries(this.eventParsers)) {
-              if (discriminator.equals(parser.discriminator)) {
-                const eventData = parser.decode(data.slice(16));
-                if (!eventData) return null;
+            // Use IDL decoder to identify and decode the event
+            const decoded = pumpswapDecoder.decodeAnyEvent(buffer);
+            if (!decoded) return null;
 
-                const event = {
-                  type: type as 'CREATE' | 'ADD' | 'REMOVE' | 'BUY' | 'SELL',
-                  data: eventData,
-                  slot: this.adapter.slot,
-                  timestamp: this.adapter.blockTime || 0,
-                  signature: this.adapter.signature,
-                  idx: `${outerIndex}-${innerIndex ?? 0}`,
-                };
-                return event;
-              }
+            let eventData: PumpswapBuyEvent | PumpswapSellEvent | PumpswapCreatePoolEvent | PumpswapDepositEvent | PumpswapWithdrawEvent;
+
+            switch (decoded.type) {
+              case 'BUY':
+                eventData = this.convertBuyEvent(decoded.data as PumpswapBuyEventDecoded);
+                break;
+              case 'SELL':
+                eventData = this.convertSellEvent(decoded.data as PumpswapSellEventDecoded);
+                break;
+              case 'CREATE':
+                eventData = this.convertCreatePoolEvent(decoded.data as PumpswapCreatePoolEventDecoded);
+                break;
+              case 'ADD':
+                eventData = this.convertDepositEvent(decoded.data as PumpswapDepositEventDecoded);
+                break;
+              case 'REMOVE':
+                eventData = this.convertWithdrawEvent(decoded.data as PumpswapWithdrawEventDecoded);
+                break;
+              default:
+                return null;
             }
+
+            return {
+              type: decoded.type as 'CREATE' | 'ADD' | 'REMOVE' | 'BUY' | 'SELL',
+              data: eventData,
+              slot: this.adapter.slot,
+              timestamp: this.adapter.blockTime || 0,
+              signature: this.adapter.signature,
+              idx: `${outerIndex}-${innerIndex ?? 0}`,
+            };
           } catch (error) {
             console.error('Failed to parse Pumpswap event:', error);
             throw error;
           }
-          return null;
         })
         .filter((event): event is PumpswapEvent => event !== null)
     );
   }
 
-  private decodeBuyEvent(data: Buffer): PumpswapBuyEvent {
-    const reader = new BinaryReader(data);
-
-    const buyEvent = {
-      timestamp: Number(reader.readI64()),
-      baseAmountOut: reader.readU64(),
-      maxQuoteAmountIn: reader.readU64(),
-      userBaseTokenReserves: reader.readU64(),
-      userQuoteTokenReserves: reader.readU64(),
-      poolBaseTokenReserves: reader.readU64(),
-      poolQuoteTokenReserves: reader.readU64(),
-      quoteAmountIn: reader.readU64(),
-      lpFeeBasisPoints: reader.readU64(),
-      lpFee: reader.readU64(),
-      protocolFeeBasisPoints: reader.readU64(),
-      protocolFee: reader.readU64(),
-      quoteAmountInWithLpFee: reader.readU64(),
-      userQuoteAmountIn: reader.readU64(),
-      pool: reader.readPubkey(),
-      user: reader.readPubkey(),
-      userBaseTokenAccount: reader.readPubkey(),
-      userQuoteTokenAccount: reader.readPubkey(),
-      protocolFeeRecipient: reader.readPubkey(),
-      protocolFeeRecipientTokenAccount: reader.readPubkey(),
-      coinCreator: data.length > 304 ? reader.readPubkey() : '11111111111111111111111111111111',
-      coinCreatorFeeBasisPoints: data.length > 304 ? reader.readU64() : 0n,
-      coinCreatorFee: data.length > 304 ? reader.readU64() : 0n,
-      isMayhemMode: false,
-    };
-
-    // Check if this is a mayhem mode trade
-    buyEvent.isMayhemMode = buyEvent.protocolFeeRecipient === MAYHEM_FEE_RECIPIENT;
-
-    return buyEvent;
-  }
-
-  private decodeSellEvent(data: Buffer): PumpswapSellEvent {
-    const reader = new BinaryReader(data);
-
-    const sellEvent = {
-      timestamp: Number(reader.readI64()),
-      baseAmountIn: reader.readU64(),
-      minQuoteAmountOut: reader.readU64(),
-      userBaseTokenReserves: reader.readU64(),
-      userQuoteTokenReserves: reader.readU64(),
-      poolBaseTokenReserves: reader.readU64(),
-      poolQuoteTokenReserves: reader.readU64(),
-      quoteAmountOut: reader.readU64(),
-      lpFeeBasisPoints: reader.readU64(),
-      lpFee: reader.readU64(),
-      protocolFeeBasisPoints: reader.readU64(),
-      protocolFee: reader.readU64(),
-      quoteAmountOutWithoutLpFee: reader.readU64(),
-      userQuoteAmountOut: reader.readU64(),
-      pool: reader.readPubkey(),
-      user: reader.readPubkey(),
-      userBaseTokenAccount: reader.readPubkey(),
-      userQuoteTokenAccount: reader.readPubkey(),
-      protocolFeeRecipient: reader.readPubkey(),
-      protocolFeeRecipientTokenAccount: reader.readPubkey(),
-      coinCreator: data.length > 304 ? reader.readPubkey() : '11111111111111111111111111111111',
-      coinCreatorFeeBasisPoints: data.length > 304 ? reader.readU64() : 0n,
-      coinCreatorFee: data.length > 304 ? reader.readU64() : 0n,
-      isMayhemMode: false,
-    };
-
-    // Check if this is a mayhem mode trade
-    sellEvent.isMayhemMode = sellEvent.protocolFeeRecipient === MAYHEM_FEE_RECIPIENT;
-
-    return sellEvent;
-  }
-
-  private decodeAddLiquidity(data: Buffer): PumpswapDepositEvent {
-    const reader = new BinaryReader(data);
-
+  private convertBuyEvent(evt: PumpswapBuyEventDecoded): PumpswapBuyEvent {
     return {
-      timestamp: Number(reader.readI64()),
-      lpTokenAmountOut: reader.readU64(),
-      maxBaseAmountIn: reader.readU64(),
-      maxQuoteAmountIn: reader.readU64(),
-      userBaseTokenReserves: reader.readU64(),
-      userQuoteTokenReserves: reader.readU64(),
-      poolBaseTokenReserves: reader.readU64(),
-      poolQuoteTokenReserves: reader.readU64(),
-      baseAmountIn: reader.readU64(),
-      quoteAmountIn: reader.readU64(),
-      lpMintSupply: reader.readU64(),
-
-      pool: reader.readPubkey(),
-      user: reader.readPubkey(),
-      userBaseTokenAccount: reader.readPubkey(),
-      userQuoteTokenAccount: reader.readPubkey(),
-      userPoolTokenAccount: reader.readPubkey(),
+      timestamp: Number(evt.timestamp),
+      baseAmountOut: evt.baseAmountOut,
+      maxQuoteAmountIn: evt.maxQuoteAmountIn,
+      userBaseTokenReserves: evt.userBaseTokenReserves,
+      userQuoteTokenReserves: evt.userQuoteTokenReserves,
+      poolBaseTokenReserves: evt.poolBaseTokenReserves,
+      poolQuoteTokenReserves: evt.poolQuoteTokenReserves,
+      quoteAmountIn: evt.quoteAmountIn,
+      lpFeeBasisPoints: evt.lpFeeBasisPoints,
+      lpFee: evt.lpFee,
+      protocolFeeBasisPoints: evt.protocolFeeBasisPoints,
+      protocolFee: evt.protocolFee,
+      quoteAmountInWithLpFee: evt.quoteAmountInWithLpFee,
+      userQuoteAmountIn: evt.userQuoteAmountIn,
+      pool: evt.pool,
+      user: evt.user,
+      userBaseTokenAccount: evt.userBaseTokenAccount,
+      userQuoteTokenAccount: evt.userQuoteTokenAccount,
+      protocolFeeRecipient: evt.protocolFeeRecipient,
+      protocolFeeRecipientTokenAccount: evt.protocolFeeRecipientTokenAccount,
+      coinCreator: evt.coinCreator ?? '11111111111111111111111111111111',
+      coinCreatorFeeBasisPoints: evt.coinCreatorFeeBasisPoints ?? 0n,
+      coinCreatorFee: evt.coinCreatorFee ?? 0n,
+      isMayhemMode: evt.isMayhemMode,
     };
   }
 
-  private decodeCreateEvent(data: Buffer): PumpswapCreatePoolEvent {
-    const reader = new BinaryReader(data);
+  private convertSellEvent(evt: PumpswapSellEventDecoded): PumpswapSellEvent {
     return {
-      timestamp: Number(reader.readI64()),
-      index: reader.readU16(),
-      creator: reader.readPubkey(),
-      baseMint: reader.readPubkey(),
-      quoteMint: reader.readPubkey(),
-      baseMintDecimals: reader.readU8(),
-      quoteMintDecimals: reader.readU8(),
-      baseAmountIn: reader.readU64(),
-      quoteAmountIn: reader.readU64(),
-      poolBaseAmount: reader.readU64(),
-      poolQuotAmount: reader.readU64(),
-      minimumLiquidity: reader.readU64(),
-      initialLiquidity: reader.readU64(),
-      lpTokenAmountOut: reader.readU64(),
-      poolBump: reader.readU8(),
-      pool: reader.readPubkey(),
-      lpMint: reader.readPubkey(),
-      userBaseTokenAccount: reader.readPubkey(),
-      userQuoteTokenAccount: reader.readPubkey(),
+      timestamp: Number(evt.timestamp),
+      baseAmountIn: evt.baseAmountIn,
+      minQuoteAmountOut: evt.minQuoteAmountOut,
+      userBaseTokenReserves: evt.userBaseTokenReserves,
+      userQuoteTokenReserves: evt.userQuoteTokenReserves,
+      poolBaseTokenReserves: evt.poolBaseTokenReserves,
+      poolQuoteTokenReserves: evt.poolQuoteTokenReserves,
+      quoteAmountOut: evt.quoteAmountOut,
+      lpFeeBasisPoints: evt.lpFeeBasisPoints,
+      lpFee: evt.lpFee,
+      protocolFeeBasisPoints: evt.protocolFeeBasisPoints,
+      protocolFee: evt.protocolFee,
+      quoteAmountOutWithoutLpFee: evt.quoteAmountOutWithoutLpFee,
+      userQuoteAmountOut: evt.userQuoteAmountOut,
+      pool: evt.pool,
+      user: evt.user,
+      userBaseTokenAccount: evt.userBaseTokenAccount,
+      userQuoteTokenAccount: evt.userQuoteTokenAccount,
+      protocolFeeRecipient: evt.protocolFeeRecipient,
+      protocolFeeRecipientTokenAccount: evt.protocolFeeRecipientTokenAccount,
+      coinCreator: evt.coinCreator ?? '11111111111111111111111111111111',
+      coinCreatorFeeBasisPoints: evt.coinCreatorFeeBasisPoints ?? 0n,
+      coinCreatorFee: evt.coinCreatorFee ?? 0n,
+      isMayhemMode: evt.isMayhemMode,
     };
   }
 
-  private decodeRemoveLiquidity(data: Buffer): PumpswapWithdrawEvent {
-    const reader = new BinaryReader(data);
+  private convertCreatePoolEvent(evt: PumpswapCreatePoolEventDecoded): PumpswapCreatePoolEvent {
     return {
-      timestamp: Number(reader.readI64()),
-      lpTokenAmountIn: reader.readU64(),
-      minBaseAmountOut: reader.readU64(),
-      minQuoteAmountOut: reader.readU64(),
-      userBaseTokenReserves: reader.readU64(),
-      userQuoteTokenReserves: reader.readU64(),
-      poolBaseTokenReserves: reader.readU64(),
-      poolQuoteTokenReserves: reader.readU64(),
-      baseAmountOut: reader.readU64(),
-      quoteAmountOut: reader.readU64(),
-      lpMintSupply: reader.readU64(),
-      pool: reader.readPubkey(),
-      user: reader.readPubkey(),
-      userBaseTokenAccount: reader.readPubkey(),
-      userQuoteTokenAccount: reader.readPubkey(),
-      userPoolTokenAccount: reader.readPubkey(),
+      timestamp: Number(evt.timestamp),
+      index: evt.index,
+      creator: evt.creator,
+      baseMint: evt.baseMint,
+      quoteMint: evt.quoteMint,
+      baseMintDecimals: evt.baseMintDecimals,
+      quoteMintDecimals: evt.quoteMintDecimals,
+      baseAmountIn: evt.baseAmountIn,
+      quoteAmountIn: evt.quoteAmountIn,
+      poolBaseAmount: evt.poolBaseAmount,
+      poolQuotAmount: evt.poolQuoteAmount,
+      minimumLiquidity: evt.minimumLiquidity,
+      initialLiquidity: evt.initialLiquidity,
+      lpTokenAmountOut: evt.lpTokenAmountOut,
+      poolBump: evt.poolBump,
+      pool: evt.pool,
+      lpMint: evt.lpMint,
+      userBaseTokenAccount: evt.userBaseTokenAccount,
+      userQuoteTokenAccount: evt.userQuoteTokenAccount,
+    };
+  }
+
+  private convertDepositEvent(evt: PumpswapDepositEventDecoded): PumpswapDepositEvent {
+    return {
+      timestamp: Number(evt.timestamp),
+      lpTokenAmountOut: evt.lpTokenAmountOut,
+      maxBaseAmountIn: evt.maxBaseAmountIn,
+      maxQuoteAmountIn: evt.maxQuoteAmountIn,
+      userBaseTokenReserves: evt.userBaseTokenReserves,
+      userQuoteTokenReserves: evt.userQuoteTokenReserves,
+      poolBaseTokenReserves: evt.poolBaseTokenReserves,
+      poolQuoteTokenReserves: evt.poolQuoteTokenReserves,
+      baseAmountIn: evt.baseAmountIn,
+      quoteAmountIn: evt.quoteAmountIn,
+      lpMintSupply: evt.lpMintSupply,
+      pool: evt.pool,
+      user: evt.user,
+      userBaseTokenAccount: evt.userBaseTokenAccount,
+      userQuoteTokenAccount: evt.userQuoteTokenAccount,
+      userPoolTokenAccount: evt.userPoolTokenAccount,
+    };
+  }
+
+  private convertWithdrawEvent(evt: PumpswapWithdrawEventDecoded): PumpswapWithdrawEvent {
+    return {
+      timestamp: Number(evt.timestamp),
+      lpTokenAmountIn: evt.lpTokenAmountIn,
+      minBaseAmountOut: evt.minBaseAmountOut,
+      minQuoteAmountOut: evt.minQuoteAmountOut,
+      userBaseTokenReserves: evt.userBaseTokenReserves,
+      userQuoteTokenReserves: evt.userQuoteTokenReserves,
+      poolBaseTokenReserves: evt.poolBaseTokenReserves,
+      poolQuoteTokenReserves: evt.poolQuoteTokenReserves,
+      baseAmountOut: evt.baseAmountOut,
+      quoteAmountOut: evt.quoteAmountOut,
+      lpMintSupply: evt.lpMintSupply,
+      pool: evt.pool,
+      user: evt.user,
+      userBaseTokenAccount: evt.userBaseTokenAccount,
+      userQuoteTokenAccount: evt.userQuoteTokenAccount,
+      userPoolTokenAccount: evt.userPoolTokenAccount,
     };
   }
 }

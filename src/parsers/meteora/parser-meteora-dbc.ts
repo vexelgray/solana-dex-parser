@@ -1,8 +1,6 @@
 import { DEX_PROGRAMS } from '../../constants';
 import { TransactionAdapter } from '../../transaction-adapter';
-import { TransactionUtils } from '../../transaction-utils';
-import { ClassifiedInstruction, DexInfo, TradeInfo, TransferData } from '../../types';
-import { MemeEvent } from '../../types/meme';
+import { ClassifiedInstruction, DexInfo, MemeEvent, TradeInfo, TransferData } from '../../types';
 import { BaseParser } from '../base-parser';
 import { MeteoraDBCEventParser } from './parser-meteora-dbc-event';
 
@@ -22,13 +20,12 @@ export class MeteoraDBCParser extends BaseParser {
   public processTrades(): TradeInfo[] {
     const events = this.eventParser
       .parseInstructions(this.classifiedInstructions)
-      .filter((event) => event.type == "BUY" || event.type == "SELL" || event.type == "SWAP");
+      .filter((event) => event.type == 'BUY' || event.type == 'SELL' || event.type == 'SWAP');
 
     return events.map((event) => this.createTradeInfo(event));
   }
 
   private createTradeInfo(event: MemeEvent): TradeInfo {
-
     const trade = {
       type: event.type,
       Pool: [event.pool!], // Bonding curve / pool address
@@ -44,15 +41,16 @@ export class MeteoraDBCParser extends BaseParser {
       signature: this.adapter.signature!,
       idx: event.idx!,
       // Include fee information extracted from EvtSwap/EvtSwap2 CPI events
-      fee: event.feeRaw ? {
-        mint: event.feeMint!,
-        amount: event.fee!,
-        amountRaw: event.feeRaw,
-        decimals: event.feeDecimals!,
-      } : undefined,
+      fee: event.feeRaw
+        ? {
+            mint: event.feeMint!,
+            amount: event.fee!,
+            amountRaw: event.feeRaw,
+            decimals: event.feeDecimals!,
+          }
+        : undefined,
     } as unknown as TradeInfo;
 
     return this.utils.attachTokenTransferInfo(trade, this.transferActions);
   }
-
 }

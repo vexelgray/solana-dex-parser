@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.FEE_ACCOUNTS = exports.METAPLEX_PROGRAM_ID = exports.PUMPFUN_MIGRATORS = exports.ASSOCIATED_TOKEN_PROGRAM_ID = exports.TOKEN_2022_PROGRAM_ID = exports.TOKEN_PROGRAM_ID = exports.SKIP_PROGRAM_IDS = exports.SYSTEM_PROGRAMS = exports.DEX_PROGRAM_IDS = exports.DEX_PROGRAMS = void 0;
+exports.RAYDIUM_LCP_LAUNCHPAD_CONFIGS = exports.METEORA_DBC_LAUNCHPADS = exports.METEORA_DBC_LAUNCHPAD_PROGRAMS = exports.METEORA_DBC_LAUNCHPAD_SIGNERS = exports.FEE_ACCOUNTS = exports.METAPLEX_PROGRAM_ID = exports.PUMPFUN_MIGRATORS = exports.ASSOCIATED_TOKEN_PROGRAM_ID = exports.TOKEN_2022_PROGRAM_ID = exports.TOKEN_PROGRAM_ID = exports.SKIP_PROGRAM_IDS = exports.SYSTEM_PROGRAMS = exports.DEX_PROGRAM_IDS = exports.DEX_PROGRAMS = void 0;
 const web3_js_1 = require("@solana/web3.js");
 exports.DEX_PROGRAMS = {
     // DEX Aggregators
@@ -337,7 +337,7 @@ exports.TOKEN_PROGRAM_ID = 'TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA';
 exports.TOKEN_2022_PROGRAM_ID = 'TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb';
 exports.ASSOCIATED_TOKEN_PROGRAM_ID = new web3_js_1.PublicKey('ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL');
 exports.PUMPFUN_MIGRATORS = ['39azUYFWPz3VHgKCf3VChUwbpURdCHRxjWVowf5jUJjg'];
-exports.METAPLEX_PROGRAM_ID = "metaqbxxUerdq28cj1RbAWkYQm3ybzjb6a8bt518x1s";
+exports.METAPLEX_PROGRAM_ID = 'metaqbxxUerdq28cj1RbAWkYQm3ybzjb6a8bt518x1s';
 exports.FEE_ACCOUNTS = [
     '96gYZGLnJYVFmbjzopPSU6QiEV5fGqZNyN9nmNhvrZU5', // Jitotip 1
     'HFqU5x63VTqvQss8hp11i4wVV8bD44PvwucfZ2bU7gRe', // Jitotip 2
@@ -363,4 +363,36 @@ exports.FEE_ACCOUNTS = [
     'BUX7s2ef2htTGb2KKoPHWkmzxPj4nTWMWRgs5CSbQxf9', // BonkSwap Fee
     'CdQTNULjDiTsvyR5UKjYBMqWvYpxXj6HY4m6atm2hErk', // Meteora Fee Vault
 ];
+/**
+ * Launchpads with feeClaimer as SIGNER - check transaction signers
+ */
+exports.METEORA_DBC_LAUNCHPAD_SIGNERS = {
+    BAGSB9TpGrZxQbEsrEznv5jXXdwyP6AXerN8aVRiAmcv: 'BAGS',
+    '5qWya6UjwWnGVhdSBL3hyZ7B45jbk6Byt1hwd7ohEGXE': 'Believe',
+    '8rE9CtCjwhSmbwL5fbJBtRFsS3ohfMcDFeTCC7t4ciUA': 'JupiterStudio',
+    '7rtiKSUDLBm59b1SBmD9oajcP8xE64vAGSMbAN5CXy1q': 'Moonshot',
+    CNDLVYCkAw5agDbwpSDKiagdyqBdbSgxP4kmysbt24Y2: 'Candle',
+};
+/**
+ * Launchpads that invoke Meteora DBC via CPI - check caller programs
+ */
+exports.METEORA_DBC_LAUNCHPAD_PROGRAMS = {
+    '4FqThZWv3QKWkSyXCDmATpWkpEiCHq5yhkdGWpSEDAZM': 'DaosFun',
+};
+/** @deprecated Use METEORA_DBC_LAUNCHPAD_SIGNERS and METEORA_DBC_LAUNCHPAD_PROGRAMS */
+exports.METEORA_DBC_LAUNCHPADS = {
+    ...exports.METEORA_DBC_LAUNCHPAD_SIGNERS,
+    ...exports.METEORA_DBC_LAUNCHPAD_PROGRAMS,
+};
+/**
+ * Raydium Launchpad platform configs that identify specific launchpads.
+ * The config address in CREATE events identifies which launchpad was used.
+ */
+exports.RAYDIUM_LCP_LAUNCHPAD_CONFIGS = {
+    FfYek5vEz23cMkWsdJwG2oa6EphsvXSHrGpdALN4g6W1: 'letsbonk.fun',
+    '8pCtbn9iatQ8493mDQax4xfEUjhoVBpUWYVQoRU18333': 'letsbonk.fun',
+    BuM6KDpWiTcxvrpXywWFiw45R2RNH8WURdvqoTDV1BW4: 'letsbonk.fun',
+    '4Bu96XjU84XjPDSpveTVf6LYGCkfW5FK7SNkREWcEfV4': 'Raydium Launchlab',
+    '9SVUZLuYghJDAv6ADjaDF1FB4WDjC1DgHKTnegioUVSg': 'Pumpkin.fun',
+};
 //# sourceMappingURL=programId.js.map

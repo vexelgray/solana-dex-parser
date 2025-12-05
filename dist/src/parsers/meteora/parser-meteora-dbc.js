@@ -12,7 +12,7 @@ class MeteoraDBCParser extends base_parser_1.BaseParser {
     processTrades() {
         const events = this.eventParser
             .parseInstructions(this.classifiedInstructions)
-            .filter((event) => event.type == "BUY" || event.type == "SELL" || event.type == "SWAP");
+            .filter((event) => event.type == 'BUY' || event.type == 'SELL' || event.type == 'SWAP');
         return events.map((event) => this.createTradeInfo(event));
     }
     createTradeInfo(event) {
@@ -31,12 +31,14 @@ class MeteoraDBCParser extends base_parser_1.BaseParser {
             signature: this.adapter.signature,
             idx: event.idx,
             // Include fee information extracted from EvtSwap/EvtSwap2 CPI events
-            fee: event.feeRaw ? {
-                mint: event.feeMint,
-                amount: event.fee,
-                amountRaw: event.feeRaw,
-                decimals: event.feeDecimals,
-            } : undefined,
+            fee: event.feeRaw
+                ? {
+                    mint: event.feeMint,
+                    amount: event.fee,
+                    amountRaw: event.feeRaw,
+                    decimals: event.feeDecimals,
+                }
+                : undefined,
         };
         return this.utils.attachTokenTransferInfo(trade, this.transferActions);
     }

@@ -1,187 +1,217 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.SugarEventParser = void 0;
+exports.SugarConfigCache = exports.SugarEventParser = void 0;
 const buffer_1 = require("buffer");
 const constants_1 = require("../../constants");
+const decoders_1 = require("../../decoders");
 const instruction_classifier_1 = require("../../instruction-classifier");
+const types_1 = require("../../types");
 const utils_1 = require("../../utils");
-const base_event_parser_1 = require("../base-event-parser");
-const binary_reader_1 = require("../binary-reader");
-const transaction_utils_1 = require("../../transaction-utils");
-class SugarEventParser extends base_event_parser_1.BaseEventParser {
+const sugar_config_cache_1 = require("./sugar-config-cache");
+// Sugar token constants
+const SUGAR_DECIMALS = 6;
+// SPL Token program (default for Sugar)
+const SPL_TOKEN_PROGRAM = 'TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA';
+class SugarEventParser {
     constructor(adapter, transferActions) {
-        super(adapter, transferActions);
         this.adapter = adapter;
         this.transferActions = transferActions;
-        this.eventParsers = {
-            BUY: {
-                discriminators: [
-                    constants_1.DISCRIMINATORS.SUGAR.BUY_EXACT_IN,
-                    constants_1.DISCRIMINATORS.SUGAR.BUY_EXACT_OUT,
-                    constants_1.DISCRIMINATORS.SUGAR.BUY_MAX_OUT,
-                ],
-                slice: 8,
-                decode: this.decodeBuyEvent.bind(this),
-            },
-            SELL: {
-                discriminators: [
-                    constants_1.DISCRIMINATORS.SUGAR.SELL_EXACT_IN,
-                    constants_1.DISCRIMINATORS.SUGAR.SELL_EXACT_OUT,
-                ],
-                slice: 8,
-                decode: this.decodeSellEvent.bind(this),
-            },
-            CREATE: {
-                discriminators: [
-                    constants_1.DISCRIMINATORS.SUGAR.CREATE,
-                ],
-                slice: 8,
-                decode: this.decodeCreateEvent.bind(this),
-            },
-            MIGRATE: {
-                discriminators: [
-                    constants_1.DISCRIMINATORS.SUGAR.MIGRATE_TO_RADIUM,
-                ],
-                slice: 8,
-                decode: this.decodeMigrateEvent.bind(this),
-            },
-        };
-        this.utils = new transaction_utils_1.TransactionUtils(adapter);
+        this.configData = null;
+    }
+    /**
+     * Set config data from cache or RPC
+     * Call this before processEvents() if you want to use actual on-chain values
+     *
+     * @param stateAddress The Sugar State account address
+     */
+    setConfigFromCache(stateAddress) {
+        const cached = sugar_config_cache_1.SugarConfigCache.get(stateAddress);
+        if (cached) {
+            this.configData = cached;
+        }
+    }
+    /**
+     * Get the current config data (cached or defaults)
+     */
+    getConfig() {
+        if (this.configData) {
+            return this.configData;
+        }
+        return sugar_config_cache_1.SugarConfigCache.getDefaults();
     }
     processEvents() {
-        const instructions = new instruction_classifier_1.InstructionClassifier(this.adapter).getMultiInstructions([constants_1.DEX_PROGRAMS.SUGAR.id, constants_1.METAPLEX_PROGRAM_ID]);
+        const instructions = new instruction_classifier_1.InstructionClassifier(this.adapter).getInstructions(constants_1.DEX_PROGRAMS.SUGAR.id);
         return this.parseInstructions(instructions);
     }
     parseInstructions(instructions) {
         return (0, utils_1.sortByIdx)(instructions
-            .map(({ programId, instruction, outerIndex, innerIndex }) => {
+            .map(({ instruction, outerIndex, innerIndex }) => {
             try {
                 const data = (0, utils_1.getInstructionData)(instruction);
-                for (const [_, parser] of Object.entries(this.eventParsers)) {
-                    const discriminator = buffer_1.Buffer.from(data.slice(0, parser.slice));
-                    if (parser.discriminators.some((it) => discriminator.equals(it))) {
-                        const options = {
-                            instruction,
-                            programId,
-                            outerIndex,
-                            innerIndex,
-                        };
-                        const memeEvent = parser.decode(data.slice(parser.slice), options);
-                        if (!memeEvent)
-                            return null;
-                        memeEvent.signature = this.adapter.signature;
-                        memeEvent.slots = this.adapter.slot;
-                        memeEvent.timestamp = this.adapter.blockTime;
-                        memeEvent.idx = `${outerIndex}-${innerIndex ?? 0}`;
-                        return memeEvent;
-                    }
+                const buffer = buffer_1.Buffer.from(data);
+                // Use IDL decoder to identify and decode the event
+                const decoded = decoders_1.sugarDecoder.decodeAnyEvent(buffer);
+                if (!decoded)
+                    return null;
+                let memeEvent;
+                switch (decoded.type) {
+                    case 'TRADE':
+                        memeEvent = this.convertTradeEvent(decoded.data);
+                        break;
+                    case 'CREATE':
+                        memeEvent = this.convertCreateEvent(decoded.data);
+                        break;
+                    case 'COMPLETE':
+                        memeEvent = this.convertCompleteEvent(decoded.data);
+                        break;
+                    case 'MIGRATE':
+                        memeEvent = this.convertMigrateEvent(decoded.data);
+                        break;
+                    default:
+                        return null;
                 }
+                // Add common fields
+                memeEvent.signature = this.adapter.signature;
+                memeEvent.slot = this.adapter.slot;
+                memeEvent.timestamp = this.adapter.blockTime;
+                memeEvent.idx = `${outerIndex}-${innerIndex ?? 0}`;
+                return memeEvent;
             }
             catch (error) {
-                console.error('Failed to parse Meteora DBC event:', error);
+                console.error('Failed to parse Sugar event:', error);
                 throw error;
             }
-            return null;
         })
             .filter((event) => event !== null));
     }
-    decodeBuyEvent(data, options) {
-        const reader = new binary_reader_1.BinaryReader(data);
-        const accounts = this.adapter.getInstructionAccounts(options.instruction);
-        reader.readU16(); // skip
-        const inputAmount = reader.readU64();
-        const outputAmount = reader.readU64();
-        const [baseMint, pool, user] = [accounts[1], accounts[2], accounts[6]];
-        const inputMint = constants_1.TOKENS.SOL;
-        const outputMint = baseMint;
-        const event = {
-            protocol: constants_1.DEX_PROGRAMS.SUGAR.name,
-            type: 'BUY',
-            baseMint: outputMint, // base_mint
-            quoteMint: inputMint, // quote_mint
-            bondingCurve: pool, // pool
-            pool: pool, // pool
-            user: user,
-            inputToken: {
-                mint: inputMint,
-                amountRaw: inputAmount.toString(),
-            },
-            outputToken: {
-                mint: outputMint,
-                amountRaw: outputAmount.toString(),
-            },
-            platformConfig: accounts[12]
-        };
-        return this.utils.processMemeTransferData(options, event, outputMint, false, 0, this.transferActions);
-    }
-    decodeSellEvent(data, options) {
-        const reader = new binary_reader_1.BinaryReader(data);
-        const accounts = this.adapter.getInstructionAccounts(options.instruction);
-        reader.readU16(); // skip
-        const inputAmount = reader.readU64();
-        const outputAmount = reader.readU64();
-        const [baseMint, pool, user] = [accounts[1], accounts[2], accounts[6]];
-        const inputMint = baseMint;
-        const outputMint = constants_1.TOKENS.SOL;
-        const event = {
-            protocol: constants_1.DEX_PROGRAMS.SUGAR.name,
-            type: 'SELL',
-            baseMint: inputMint, // base_mint
-            quoteMint: outputMint, // quote_mint
-            bondingCurve: pool, // pool
-            pool: pool, // pool
-            user: user,
-            inputToken: {
-                mint: inputMint,
-                amountRaw: inputAmount.toString(),
-            },
-            outputToken: {
-                mint: outputMint,
-                amountRaw: outputAmount.toString(),
-            },
-            platformConfig: accounts[12]
-        };
-        return this.utils.processMemeTransferData(options, event, inputMint, false, 0, this.transferActions);
-    }
-    decodeCreateEvent(data, options) {
-        const reader = new binary_reader_1.BinaryReader(data);
-        const accounts = this.adapter.getInstructionAccounts(options.instruction);
-        const name = reader.readString();
-        const symbol = reader.readString();
-        const uri = reader.readString();
-        const [pool, baseMint, user] = [accounts[2], accounts[3], accounts[6]];
+    /**
+     * Convert TradeEvent from IDL decoder to MemeEvent
+     * IDL fields: mint, solAmount, tokenAmount, isBuy, user, timestamp,
+     *             realSolReserves, virtualSolReserves, realTokenReserves, virtualTokenReserves
+     */
+    convertTradeEvent(evt) {
+        let inputMint, outputMint;
+        let inputAmount, outputAmount;
+        let inputDecimals, outputDecimals;
+        if (evt.isBuy) {
+            inputMint = constants_1.TOKENS.SOL;
+            inputAmount = evt.solAmount;
+            inputDecimals = 9;
+            outputMint = evt.mint;
+            outputAmount = evt.tokenAmount;
+            outputDecimals = SUGAR_DECIMALS;
+        }
+        else {
+            inputMint = evt.mint;
+            inputAmount = evt.tokenAmount;
+            inputDecimals = SUGAR_DECIMALS;
+            outputMint = constants_1.TOKENS.SOL;
+            outputAmount = evt.solAmount;
+            outputDecimals = 9;
+        }
         return {
             protocol: constants_1.DEX_PROGRAMS.SUGAR.name,
+            launchpad: constants_1.DEX_PROGRAMS.SUGAR.name,
+            type: evt.isBuy ? 'BUY' : 'SELL',
+            baseMint: evt.mint,
+            quoteMint: constants_1.TOKENS.SOL,
+            user: evt.user,
+            inputToken: {
+                mint: inputMint,
+                amountRaw: inputAmount.toString(),
+                amount: (0, types_1.convertToUiAmount)(inputAmount, inputDecimals),
+                decimals: inputDecimals,
+            },
+            outputToken: {
+                mint: outputMint,
+                amountRaw: outputAmount.toString(),
+                amount: (0, types_1.convertToUiAmount)(outputAmount, outputDecimals),
+                decimals: outputDecimals,
+            },
+            // Bonding curve reserves after trade (from IDL event)
+            curveQuoteReserves: Number(evt.virtualSolReserves),
+            curveBaseReserves: Number(evt.virtualTokenReserves),
+            vaultQuoteReserves: Number(evt.realSolReserves),
+            vaultBaseReserves: Number(evt.realTokenReserves),
+        };
+    }
+    /**
+     * Convert CreateEvent from IDL decoder to MemeEvent
+     * IDL fields: name, symbol, uri, mint, bondingCurve, user, migrationKind
+     *
+     * Reserve values come from the State account config (cached or defaults)
+     */
+    convertCreateEvent(evt) {
+        const config = this.getConfig();
+        return {
+            protocol: constants_1.DEX_PROGRAMS.SUGAR.name,
+            launchpad: constants_1.DEX_PROGRAMS.SUGAR.name,
             type: 'CREATE',
-            timestamp: this.adapter.blockTime,
-            pool: pool,
-            bondingCurve: pool,
-            user: user,
-            creator: user,
-            baseMint: baseMint,
-            quoteMint: constants_1.TOKENS.SOL,
-            name: name,
-            symbol: symbol,
-            uri: uri,
-            decimals: 6,
-            totalSupply: 1000000000
+            user: evt.user,
+            // Grouped token structures for CREATE events
+            baseToken: {
+                mint: evt.mint,
+                name: evt.name,
+                symbol: evt.symbol,
+                uri: evt.uri,
+                decimals: SUGAR_DECIMALS,
+                totalSupply: Number(config.totalSupply),
+                programId: SPL_TOKEN_PROGRAM,
+            },
+            quoteToken: {
+                mint: constants_1.TOKENS.SOL,
+                symbol: 'SOL',
+                decimals: 9,
+            },
+            creatorAddress: evt.user,
+            poolAddress: evt.bondingCurve,
+            configAddress: evt.bondingCurve, // Sugar uses bonding curve as config
+            // Bonding curve reserves (from State account config)
+            curveType: 'ConstantProduct',
+            curveBaseReserves: Number(config.initialVirtualTokenReserve),
+            curveQuoteReserves: Number(config.initialVirtualSolReserve),
+            vaultBaseReserves: Number(config.totalSupply),
+            vaultQuoteReserves: 0,
+            // Goals
+            initialSaleSupply: Number(config.totalSupply),
+            graduationThreshold: Number(config.graduationThreshold),
         };
     }
-    decodeMigrateEvent(data, options) {
-        const accounts = this.adapter.getInstructionAccounts(options.instruction);
-        const [pool, bondingCurve, baseMint, user] = [accounts[15], accounts[3], accounts[1], accounts[12]];
+    /**
+     * Convert CompleteEvent from IDL decoder to MemeEvent
+     * IDL fields: user, mint, bondingCurve, timestamp
+     */
+    convertCompleteEvent(evt) {
         return {
             protocol: constants_1.DEX_PROGRAMS.SUGAR.name,
-            type: 'MIGRATE',
-            timestamp: this.adapter.blockTime,
-            pool: pool,
-            bondingCurve: bondingCurve,
-            user: user,
-            creator: user,
-            baseMint: baseMint,
+            launchpad: constants_1.DEX_PROGRAMS.SUGAR.name,
+            type: 'COMPLETE',
+            timestamp: Number(evt.timestamp),
+            user: evt.user,
+            baseMint: evt.mint,
             quoteMint: constants_1.TOKENS.SOL,
+            poolAddress: evt.bondingCurve,
+        };
+    }
+    /**
+     * Convert MigrateEvent from IDL decoder to MemeEvent
+     * IDL fields: tokenMint, poolAddress, vaultA, vaultB, timestamp
+     */
+    convertMigrateEvent(evt) {
+        return {
+            protocol: constants_1.DEX_PROGRAMS.SUGAR.name,
+            launchpad: constants_1.DEX_PROGRAMS.SUGAR.name,
+            type: 'MIGRATE',
+            timestamp: Number(evt.timestamp),
+            baseMint: evt.tokenMint,
+            quoteMint: constants_1.TOKENS.SOL,
+            pool: evt.poolAddress,
+            poolAddress: evt.poolAddress,
         };
     }
 }
 exports.SugarEventParser = SugarEventParser;
+// Re-export config cache for external use
+var sugar_config_cache_2 = require("./sugar-config-cache");
+Object.defineProperty(exports, "SugarConfigCache", { enumerable: true, get: function () { return sugar_config_cache_2.SugarConfigCache; } });
 //# sourceMappingURL=parser-sugar-event.js.map

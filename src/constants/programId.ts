@@ -1,4 +1,4 @@
-import { PublicKey } from "@solana/web3.js";
+import { PublicKey } from '@solana/web3.js';
 
 export const DEX_PROGRAMS = {
   // DEX Aggregators
@@ -347,7 +347,7 @@ export const ASSOCIATED_TOKEN_PROGRAM_ID = new PublicKey('ATokenGPvbdGVxr1b2hvZb
 
 export const PUMPFUN_MIGRATORS = ['39azUYFWPz3VHgKCf3VChUwbpURdCHRxjWVowf5jUJjg'];
 
-export const METAPLEX_PROGRAM_ID = "metaqbxxUerdq28cj1RbAWkYQm3ybzjb6a8bt518x1s";
+export const METAPLEX_PROGRAM_ID = 'metaqbxxUerdq28cj1RbAWkYQm3ybzjb6a8bt518x1s';
 
 export const FEE_ACCOUNTS = [
   '96gYZGLnJYVFmbjzopPSU6QiEV5fGqZNyN9nmNhvrZU5', // Jitotip 1
@@ -379,3 +379,39 @@ export const FEE_ACCOUNTS = [
 
   'CdQTNULjDiTsvyR5UKjYBMqWvYpxXj6HY4m6atm2hErk', // Meteora Fee Vault
 ];
+
+/**
+ * Launchpads with feeClaimer as SIGNER - check transaction signers
+ */
+export const METEORA_DBC_LAUNCHPAD_SIGNERS: Record<string, string> = {
+  BAGSB9TpGrZxQbEsrEznv5jXXdwyP6AXerN8aVRiAmcv: 'BAGS',
+  '5qWya6UjwWnGVhdSBL3hyZ7B45jbk6Byt1hwd7ohEGXE': 'Believe',
+  '8rE9CtCjwhSmbwL5fbJBtRFsS3ohfMcDFeTCC7t4ciUA': 'JupiterStudio',
+  '7rtiKSUDLBm59b1SBmD9oajcP8xE64vAGSMbAN5CXy1q': 'Moonshot',
+  CNDLVYCkAw5agDbwpSDKiagdyqBdbSgxP4kmysbt24Y2: 'Candle',
+};
+
+/**
+ * Launchpads that invoke Meteora DBC via CPI - check caller programs
+ */
+export const METEORA_DBC_LAUNCHPAD_PROGRAMS: Record<string, string> = {
+  '4FqThZWv3QKWkSyXCDmATpWkpEiCHq5yhkdGWpSEDAZM': 'DaosFun',
+};
+
+/** @deprecated Use METEORA_DBC_LAUNCHPAD_SIGNERS and METEORA_DBC_LAUNCHPAD_PROGRAMS */
+export const METEORA_DBC_LAUNCHPADS: Record<string, string> = {
+  ...METEORA_DBC_LAUNCHPAD_SIGNERS,
+  ...METEORA_DBC_LAUNCHPAD_PROGRAMS,
+};
+
+/**
+ * Raydium Launchpad platform configs that identify specific launchpads.
+ * The config address in CREATE events identifies which launchpad was used.
+ */
+export const RAYDIUM_LCP_LAUNCHPAD_CONFIGS: Record<string, string> = {
+  FfYek5vEz23cMkWsdJwG2oa6EphsvXSHrGpdALN4g6W1: 'letsbonk.fun',
+  '8pCtbn9iatQ8493mDQax4xfEUjhoVBpUWYVQoRU18333': 'letsbonk.fun',
+  BuM6KDpWiTcxvrpXywWFiw45R2RNH8WURdvqoTDV1BW4: 'letsbonk.fun',
+  '4Bu96XjU84XjPDSpveTVf6LYGCkfW5FK7SNkREWcEfV4': 'Raydium Launchlab',
+  '9SVUZLuYghJDAv6ADjaDF1FB4WDjC1DgHKTnegioUVSg': 'Pumpkin.fun',
+};

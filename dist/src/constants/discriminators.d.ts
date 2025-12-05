@@ -176,5 +176,9 @@ export declare const DISCRIMINATORS: {
         readonly CREATE: Uint8Array<ArrayBuffer>;
         readonly INITIALIZE: Uint8Array<ArrayBuffer>;
         readonly MIGRATE_TO_RADIUM: Uint8Array<ArrayBuffer>;
+        readonly TRADE_EVENT: Uint8Array<ArrayBuffer>;
+        readonly CREATE_EVENT: Uint8Array<ArrayBuffer>;
+        readonly COMPLETE_EVENT: Uint8Array<ArrayBuffer>;
+        readonly MIGRATE_EVENT: Uint8Array<ArrayBuffer>;
     };
 };
